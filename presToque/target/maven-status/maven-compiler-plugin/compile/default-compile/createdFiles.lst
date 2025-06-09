@@ -1,0 +1,5 @@
+com\mycompany\prestoque\ClienteValidador.class
+com\mycompany\prestoque\ExcelServiceCliente.class
+com\mycompany\prestoque\Persona.class
+com\mycompany\prestoque\Cliente.class
+com\mycompany\prestoque\TestDataGeneratorCliente.class
