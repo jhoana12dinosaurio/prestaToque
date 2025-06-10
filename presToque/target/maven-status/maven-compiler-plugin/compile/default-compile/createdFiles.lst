@@ -1,9 +1,0 @@
-com\mycompany\prestoque\Persona.class
-com\mycompany\prestoque\ExcelServicePrestamo.class
-com\mycompany\prestoque\TestDataGeneratorPrestamo.class
-com\mycompany\prestoque\Cliente.class
-com\mycompany\prestoque\Prestamo.class
-com\mycompany\prestoque\PrestamoValidador.class
-com\mycompany\prestoque\ClienteValidador.class
-com\mycompany\prestoque\ExcelServiceCliente.class
-com\mycompany\prestoque\TestDataGeneratorCliente.class
