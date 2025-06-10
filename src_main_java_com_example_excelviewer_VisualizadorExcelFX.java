@@ -1,0 +1,140 @@
+package com.example.excelviewer;
+
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.stage.Stage;
+import javafx.collections.*;
+import javafx.geometry.*;
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.scene.control.cell.PropertyValueFactory;
+import java.awt.Desktop;
+
+public class VisualizadorExcelFX extends Application {
+    private static final String DATA_DIR = "presToque/data";
+
+    private ListView<String> archivosList;
+    private TableView<List<String>> tablaPreview;
+    private ObservableList<String> archivosObservable;
+
+    @Override
+    public void start(Stage stage) {
+        archivosObservable = FXCollections.observableArrayList();
+        archivosList = new ListView<>(archivosObservable);
+        tablaPreview = new TableView<>();
+
+        cargarArchivos();
+
+        archivosList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                mostrarPreview(newVal);
+            }
+        });
+
+        Button btnAbrir = new Button("Abrir en Excel");
+        btnAbrir.setOnAction(e -> abrirArchivo(archivosList.getSelectionModel().getSelectedItem()));
+
+        VBox leftPanel = new VBox(10, new Label("Archivos Excel:"), archivosList, btnAbrir);
+        leftPanel.setPadding(new Insets(10));
+        leftPanel.setPrefWidth(250);
+
+        BorderPane root = new BorderPane();
+        root.setLeft(leftPanel);
+        root.setCenter(tablaPreview);
+
+        Scene scene = new Scene(root, 900, 600);
+        stage.setTitle("Visualizador de Archivos Excel Generados");
+        stage.setScene(scene);
+        stage.show();
+    }
+
+    private void cargarArchivos() {
+        archivosObservable.clear();
+        File dataDir = new File(DATA_DIR);
+        if (!dataDir.exists()) {
+            dataDir.mkdirs();
+        }
+        try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(Paths.get(DATA_DIR), "*.xlsx")) {
+            for (Path entry : dirStream) {
+                archivosObservable.add(entry.getFileName().toString());
+            }
+        } catch (IOException e) {
+            mostrarError("Error al listar archivos: " + e.getMessage());
+        }
+    }
+
+    private void mostrarPreview(String fileName) {
+        if (fileName == null) return;
+        File file = new File(DATA_DIR, fileName);
+        try (FileInputStream fis = new FileInputStream(file);
+             Workbook workbook = new XSSFWorkbook(fis)) {
+            Sheet sheet = workbook.getSheetAt(0);
+
+            tablaPreview.getColumns().clear();
+            tablaPreview.getItems().clear();
+
+            Iterator<Row> rowIterator = sheet.rowIterator();
+            if (!rowIterator.hasNext()) return;
+            Row header = rowIterator.next();
+
+            List<String> colNames = new ArrayList<>();
+            for (Cell cell : header) {
+                String colName = cell.toString();
+                colNames.add(colName);
+            }
+
+            // Crear columnas dinámicamente
+            for (int i = 0; i < colNames.size(); i++) {
+                final int colIdx = i;
+                TableColumn<List<String>, String> col = new TableColumn<>(colNames.get(i));
+                col.setCellValueFactory(data -> {
+                    List<String> row = data.getValue();
+                    return new SimpleStringProperty(colIdx < row.size() ? row.get(colIdx) : "");
+                });
+                tablaPreview.getColumns().add(col);
+            }
+
+            // Agregar filas (máximo 20 para preview)
+            int rowCount = 0;
+            while (rowIterator.hasNext() && rowCount < 20) {
+                Row excelRow = rowIterator.next();
+                List<String> rowData = new ArrayList<>();
+                for (int i = 0; i < colNames.size(); i++) {
+                    Cell cell = excelRow.getCell(i, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
+                    rowData.add(cell.toString());
+                }
+                tablaPreview.getItems().add(rowData);
+                rowCount++;
+            }
+        } catch (Exception e) {
+            tablaPreview.getColumns().clear();
+            tablaPreview.getItems().clear();
+            mostrarError("Error al leer archivo: " + e.getMessage());
+        }
+    }
+
+    private void abrirArchivo(String fileName) {
+        if (fileName == null) return;
+        File file = new File(DATA_DIR, fileName);
+        try {
+            Desktop.getDesktop().open(file);
+        } catch (IOException e) {
+            mostrarError("No se pudo abrir el archivo: " + e.getMessage());
+        }
+    }
+
+    private void mostrarError(String mensaje) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, mensaje, ButtonType.OK);
+        alert.showAndWait();
+    }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+}
